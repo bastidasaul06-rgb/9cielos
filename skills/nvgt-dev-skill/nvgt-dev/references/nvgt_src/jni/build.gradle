@@ -1,0 +1,83 @@
+buildscript {
+	repositories {
+		mavenCentral()
+		google()
+	}
+	dependencies {
+		classpath 'com.android.tools.build:gradle:8.7.3'
+	}
+}
+
+allprojects {
+	repositories {
+		mavenCentral()
+		google()
+	}
+}
+
+apply plugin: 'com.android.application'
+
+android {
+	namespace "com.samtupy.nvgt"
+	compileSdkVersion 35
+	aaptOptions {
+		cruncherEnabled = false  
+	}
+	flavorDimensions "version"
+	defaultConfig {
+		minSdkVersion 28
+		targetSdkVersion 35
+		versionCode 1
+		versionName "1.0"
+	}
+	buildTypes {
+		release {
+			minifyEnabled false
+			crunchPngs false
+			proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+		}
+	}
+	productFlavors {
+		runner {
+			dimension "version"
+			applicationId "com.samtupy.nvgt.runner"
+			versionName file("../version").getText().trim()
+		}
+		stub {
+			dimension "version"
+			applicationId "com.samtupy.nvgt.stub"
+		}
+	}
+
+	sourceSets {
+		runner {
+			jniLibs.srcDirs = ['libs/runner']
+			assets.srcDirs = ['../release/include']
+		}
+		stub {
+			jniLibs.srcDirs = ['libs/stub']
+			assets.srcDirs = []
+		}
+	}
+	applicationVariants.all { variant ->
+		if (variant.productFlavors[0].name == "stub") {
+			variant.getAssembleProvider().configure() {
+				it.doLast { 
+					variant.outputs.each { output ->
+						File apk = output.outputFile
+						exec {
+							commandLine "python", "makestub.py", "${variant.name}", "${buildDir}"
+						}
+					}
+				}
+			}
+		} else {
+			variant.outputs.each { output ->
+				output.versionCodeOverride = (int) (new Date().getTime() / 60000.0)
+			}
+		}
+	}
+	lint {
+		abortOnError false
+	}
+}
